@@ -36,12 +36,16 @@ impl<C: Component, F: Fn(&World) -> C> DynamicBundle for Construct<C, F> {
 }
 
 unsafe impl<C: Component, F: Fn(&World) -> C + Send + Sync + 'static> Bundle for Construct<C, F> {
-    fn component_ids(_: &mut ComponentsRegistrator, _: &mut impl FnMut(ComponentId)) {
-        // SAFETY: Empty function body
+    fn component_ids(
+        _: &mut ComponentsRegistrator,
+    ) -> impl Iterator<Item = ComponentId> + use<C, F> {
+        // SAFETY: Empty iterator
+        core::iter::empty()
     }
 
-    fn get_component_ids(_: &Components, _: &mut impl FnMut(Option<ComponentId>)) {
-        // SAFETY: Empty function body
+    fn get_component_ids(_: &Components) -> impl Iterator<Item = Option<ComponentId>> {
+        // SAFETY: Empty iterator
+        core::iter::empty()
     }
 }
 
@@ -71,12 +75,16 @@ unsafe impl<
     I: IntoObserverSystem<E, B, M> + Send + Sync,
 > Bundle for AddObserver<E, B, M, I>
 {
-    fn component_ids(_: &mut ComponentsRegistrator, _: &mut impl FnMut(ComponentId)) {
-        // SAFETY: Empty function body
+    fn component_ids(
+        _: &mut ComponentsRegistrator,
+    ) -> impl Iterator<Item = ComponentId> + use<E, B, M, I> {
+        // SAFETY: Empty iterator
+        core::iter::empty()
     }
 
-    fn get_component_ids(_: &Components, _: &mut impl FnMut(Option<ComponentId>)) {
-        // SAFETY: Empty function body
+    fn get_component_ids(_: &Components) -> impl Iterator<Item = Option<ComponentId>> {
+        // SAFETY: Empty iterator
+        core::iter::empty()
     }
 }
 
