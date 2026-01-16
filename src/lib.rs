@@ -1,4 +1,5 @@
 use core::marker::PhantomData;
+use std::mem::{self, MaybeUninit};
 
 use bevy::{
     ecs::{
@@ -17,18 +18,19 @@ pub struct Construct<C: Component, F: Fn(&World) -> C> {
 impl<C: Component, F: Fn(&World) -> C> DynamicBundle for Construct<C, F> {
     type Effect = Self;
 
+    #[inline]
     unsafe fn get_components(
-        _: MovingPtr<'_, Self>,
-        _: &mut impl FnMut(StorageType, OwningPtr<'_>),
+        ptr: MovingPtr<'_, Self>,
+        _func: &mut impl FnMut(StorageType, OwningPtr<'_>),
     ) {
-        // SAFETY: Empty function body
+        // SAFETY: We must not drop the pointer here, or it will be uninitialized in `apply_effect`
+        // below.
+        mem::forget(ptr);
     }
 
-    unsafe fn apply_effect(
-        ptr: MovingPtr<'_, std::mem::MaybeUninit<Self>>,
-        entity: &mut EntityWorldMut,
-    ) {
-        // SAFETY: `get_components` does nothing, value was not moved.
+    unsafe fn apply_effect(ptr: MovingPtr<'_, MaybeUninit<Self>>, entity: &mut EntityWorldMut) {
+        // SAFETY: The pointer was not dropped in `get_components`, so the allocation is still
+        // initialized.
         let construct = unsafe { ptr.assume_init() };
         let construct = construct.read();
         entity.insert((construct.func)(entity.world()));
@@ -36,12 +38,18 @@ impl<C: Component, F: Fn(&World) -> C> DynamicBundle for Construct<C, F> {
 }
 
 unsafe impl<C: Component, F: Fn(&World) -> C + Send + Sync + 'static> Bundle for Construct<C, F> {
-    fn component_ids(_: &mut ComponentsRegistrator, _: &mut impl FnMut(ComponentId)) {
-        // SAFETY: Empty function body
+    #[inline]
+    fn component_ids(
+        _components: &mut ComponentsRegistrator,
+    ) -> impl Iterator<Item = ComponentId> + use<C, F> {
+        // SAFETY: Empty iterator
+        core::iter::empty()
     }
 
-    fn get_component_ids(_: &Components, _: &mut impl FnMut(Option<ComponentId>)) {
-        // SAFETY: Empty function body
+    #[inline]
+    fn get_component_ids(_components: &Components) -> impl Iterator<Item = Option<ComponentId>> {
+        // SAFETY: Empty iterator
+        core::iter::empty()
     }
 }
 
@@ -71,12 +79,18 @@ unsafe impl<
     I: IntoObserverSystem<E, B, M> + Send + Sync,
 > Bundle for AddObserver<E, B, M, I>
 {
-    fn component_ids(_: &mut ComponentsRegistrator, _: &mut impl FnMut(ComponentId)) {
-        // SAFETY: Empty function body
+    #[inline]
+    fn component_ids(
+        _components: &mut ComponentsRegistrator,
+    ) -> impl Iterator<Item = ComponentId> + use<E, B, M, I> {
+        // SAFETY: Empty iterator
+        core::iter::empty()
     }
 
-    fn get_component_ids(_: &Components, _: &mut impl FnMut(Option<ComponentId>)) {
-        // SAFETY: Empty function body
+    #[inline]
+    fn get_component_ids(_components: &Components) -> impl Iterator<Item = Option<ComponentId>> {
+        // SAFETY: Empty iterator
+        core::iter::empty()
     }
 }
 
@@ -87,18 +101,18 @@ impl<E: EntityEvent, B: Bundle, M, I: IntoObserverSystem<E, B, M>> DynamicBundle
 
     #[inline]
     unsafe fn get_components(
-        _ptr: MovingPtr<'_, Self>,
+        ptr: MovingPtr<'_, Self>,
         _func: &mut impl FnMut(StorageType, OwningPtr<'_>),
     ) {
-        // SAFETY: Empty function body
+        // SAFETY: We must not drop the pointer here, or it will be uninitialized in `apply_effect`
+        // below.
+        mem::forget(ptr);
     }
 
     #[inline]
-    unsafe fn apply_effect(
-        ptr: MovingPtr<'_, core::mem::MaybeUninit<Self>>,
-        entity: &mut EntityWorldMut,
-    ) {
-        // SAFETY: `get_components` does nothing, value was not moved.
+    unsafe fn apply_effect(ptr: MovingPtr<'_, MaybeUninit<Self>>, entity: &mut EntityWorldMut) {
+        // SAFETY: The pointer was not dropped in `get_components`, so the allocation is still
+        // initialized.
         let add_observer = unsafe { ptr.assume_init() };
         let add_observer = add_observer.read();
         entity.observe(add_observer.observer);
